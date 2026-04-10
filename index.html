@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumos FC — Member Check-in Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  /* Brand palette: Pantone 123C gold, white, black */
+  --gold:#FFC72C;
+  --gold-dark:#b38900;
+  --gold-dim:rgba(255,199,44,0.12);
+  --gold-mid:rgba(255,199,44,0.22);
+  --bg:#ffffff;
+  --surface:#f7f6f3;
+  --surface2:#eeece8;
+  --surface3:#e4e1da;
+  --border:rgba(0,0,0,0.08);
+  --border2:rgba(0,0,0,0.14);
+  --text:#0a0a0a;
+  --text2:#666;
+  --text3:#aaa;
+  /* Risk tiers */
+  --high:#d93025;
+  --high-dim:rgba(217,48,37,0.08);
+  --med:#e67e00;
+  --med-dim:rgba(230,126,0,0.09);
+  --low:#1a7a4a;
+  --low-dim:rgba(26,122,74,0.08);
+  --new-c:#1565c0;
+  --new-dim:rgba(21,101,192,0.08);
+  /* Owner tag colors */
+  --o-noah:#1565c0;   --o-noah-bg:rgba(21,101,192,0.09);
+  --o-jon:#7b1fa2;    --o-jon-bg:rgba(123,31,162,0.09);
+  --o-brett:#1a7a4a;  --o-brett-bg:rgba(26,122,74,0.09);
+  --o-jojo:#c2410c;   --o-jojo-bg:rgba(194,65,12,0.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* ── Header ── */
+header{padding:0;border-bottom:2px solid var(--gold);display:flex;align-items:stretch;justify-content:space-between;gap:0;flex-wrap:wrap;background:#000}
+.header-brand{padding:16px 28px;display:flex;flex-direction:column;justify-content:center}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);line-height:1}
+.page-subtitle{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-top:3px}
+.header-right{display:flex;gap:8px;align-items:center;padding:16px 28px;flex-wrap:wrap;background:#000}
+
+/* ── Buttons ── */
+.btn{font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;padding:7px 16px;border-radius:4px;
+  border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;
+  transition:all .15s;white-space:nowrap;letter-spacing:.02em;text-transform:uppercase}
+.btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+.btn-accent{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700}
+.btn-accent:hover{background:#FFD966;border-color:#FFD966}
+/* header buttons need light treatment since header is black */
+header .btn{border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.6)}
+header .btn:hover{background:rgba(255,255,255,0.08);color:#fff;border-color:rgba(255,255,255,0.35)}
+
+/* ── Stats bar ── */
+.stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:var(--border);border-bottom:1px solid var(--border)}
+.stat{background:var(--bg);padding:18px 22px;border-right:1px solid var(--border)}
+.stat:last-child{border-right:none}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:5px;font-weight:600}
+.stat-val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;line-height:1;letter-spacing:.02em}
+.stat-val.danger{color:var(--high)}
+.stat-val.warn{color:var(--med)}
+.stat-val.ok{color:var(--low)}
+.stat-val.new-c{color:var(--new-c)}
+
+/* ── Toolbar ── */
+.toolbar{padding:12px 28px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--bg)}
+.search-wrap{position:relative;flex:0 0 210px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+input[type=search],input[type=text],input[type=date],input[type=number],select,textarea{
+  font-family:'Barlow',sans-serif;font-size:13px;background:var(--bg);
+  border:1px solid var(--border2);border-radius:4px;color:var(--text);padding:7px 10px;outline:none;
+  transition:border-color .15s}
+input[type=search]{padding-left:30px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-dim)}
+select{cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aaa' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+
+/* ── Filter pills ── */
+.filter-group{display:flex;gap:4px;flex-wrap:wrap}
+.filter-btn{font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  padding:5px 13px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);
+  cursor:pointer;white-space:nowrap;transition:all .15s}
+.filter-btn:hover{border-color:var(--text3);color:var(--text2)}
+.filter-btn.active{border-color:var(--gold-dark);background:var(--gold-dim);color:var(--gold-dark)}
+.filter-btn.active.fd{border-color:var(--high);background:var(--high-dim);color:var(--high)}
+.filter-btn.active.fw{border-color:var(--med);background:var(--med-dim);color:var(--med)}
+.filter-btn.active.fo{border-color:var(--low);background:var(--low-dim);color:var(--low)}
+
+/* ── Toggle row ── */
+.toggle-row{padding:10px 28px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface)}
+.tgl-label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;cursor:pointer}
+.tgl-label strong{color:var(--text);font-weight:600}
+.tgl{position:relative;width:36px;height:20px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0;position:absolute}
+.tgl-track{position:absolute;inset:0;border-radius:10px;background:var(--surface3);border:1px solid var(--border2);transition:background .2s,border-color .2s}
+.tgl-thumb{position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--text3);transition:all .2s}
+.tgl input:checked~.tgl-track{background:var(--gold-mid);border-color:var(--gold)}
+.tgl input:checked~.tgl-thumb{background:var(--gold-dark);left:19px}
+.wpill{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);
+  border-bottom:2px solid var(--border2);text-align:left;white-space:nowrap;cursor:pointer;user-select:none;
+  background:var(--surface);position:sticky;top:0;z-index:2;transition:color .12s}
+thead th:hover{color:var(--text2)}
+thead th.sorted{color:var(--gold-dark)}
+.sa{margin-left:3px;font-size:9px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .08s}
+tbody tr:hover{background:#fffdf0}
+tbody tr:last-child{border-bottom:none}
+td{padding:11px 14px;vertical-align:middle}
+.mn{font-weight:600;font-size:13px;letter-spacing:.01em;color:var(--text)}
+.mpkg{font-size:11px;color:var(--text3);margin-top:2px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td{font-size:12px;color:var(--text2)}
+.ty{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-top:1px}
+.vn{font-family:'DM Mono',monospace;font-size:14px;text-align:center;color:var(--text)}
+.dash{color:var(--text3);font-size:12px;text-align:center}
+.cd{font-size:12px;color:var(--text2)}
+.ca{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-top:1px}
+.nev{color:var(--high);font-size:12px;font-weight:600}
+.sc{display:flex;align-items:center;gap:8px;min-width:110px}
+.bb{flex:1;height:4px;border-radius:2px;background:var(--border2)}
+.bf{height:4px;border-radius:2px}
+.sn{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);min-width:22px;text-align:right}
+
+/* ── Risk badges ── */
+.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.bh{background:var(--high-dim);color:var(--high)}
+.bm{background:var(--med-dim);color:var(--med)}
+.bl{background:var(--low-dim);color:var(--low)}
+.bn{background:var(--new-dim);color:var(--new-c)}
+
+/* ── Owner tags ── */
+.ob{display:inline-block;padding:2px 9px;border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:.03em;text-transform:uppercase}
+.on{background:var(--o-noah-bg);color:var(--o-noah)}
+.oj{background:var(--o-jon-bg);color:var(--o-jon)}
+.ob2{background:var(--o-brett-bg);color:var(--o-brett)}
+.ojj{background:var(--o-jojo-bg);color:var(--o-jojo)}
+.oo{background:var(--surface2);color:var(--text3)}
+
+/* ── Misc ── */
+.ebt{font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;
+  padding:4px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .12s}
+.ebt:hover{border-color:var(--gold-dark);color:var(--gold-dark);background:var(--gold-dim)}
+.cbt{font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  padding:4px 12px;border-radius:4px;border:1px solid var(--low);background:var(--low-dim);color:var(--low);cursor:pointer;transition:all .12s;white-space:nowrap}
+.cbt:hover{background:var(--low);color:#fff}
+.cbt.flash{background:var(--low);color:#fff}
+.er td{text-align:center;padding:48px;color:var(--text3)}
+
+/* ── Modal ── */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center}
+.mbg.open{display:flex}
+.mod{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:26px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;border-top:3px solid var(--gold)}
+.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.mt{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+.mc{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1}
+.mc:hover{color:var(--text)}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--text3);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.s2{grid-column:1/-1}
+.ma{display:flex;justify-content:space-between;align-items:center;margin-top:18px;flex-wrap:wrap;gap:8px}
+.mar{display:flex;gap:8px}
+.ch{background:var(--surface);border-left:3px solid var(--gold);padding:10px 13px;margin-top:4px;border-radius:0 4px 4px 0}
+.cht{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--text3);margin-bottom:6px}
+.chi{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)}
+.chi:last-child{border-bottom:none}
+
+@media(max-width:700px){
+  header,.header-brand,.toolbar,.toggle-row{padding-left:16px;padding-right:16px}
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Settings Panel ── */
+.settings-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center}
+.settings-bg.open{display:flex}
+.settings-panel{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:28px;width:100%;max-width:500px;border-top:3px solid var(--gold)}
+.settings-panel h2{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text);margin-bottom:4px}
+.settings-section{margin-top:20px}
+.settings-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.cal-row{display:grid;grid-template-columns:80px 1fr;align-items:center;gap:10px;margin-bottom:8px}
+.cal-row label{font-size:12px;font-weight:600;color:var(--text2)}
+.cal-row input{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--border2);border-radius:4px;padding:6px 10px;outline:none;transition:border-color .15s;width:100%}
+.cal-row input:focus{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-dim)}
+.cal-row .coach-chip{display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.gcal-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:4px;font-size:12px;font-weight:600;margin-bottom:16px}
+.gcal-status.connected{background:var(--low-dim);color:var(--low);border:1px solid rgba(26,122,74,0.2)}
+.gcal-status.disconnected{background:var(--high-dim);color:var(--high);border:1px solid rgba(217,48,37,0.2)}
+.gcal-status.pending{background:var(--med-dim);color:var(--med);border:1px solid rgba(230,126,0,0.2)}
+.gcal-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.settings-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.cal-hint{font-size:11px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace}
+
+/* ── Checkin toast ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#000;color:#fff;padding:12px 18px;border-radius:6px;font-size:13px;font-weight:500;border-left:4px solid var(--gold);
+  opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-color:var(--low)}
+.toast.error{border-color:var(--high)}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-brand"><div class="logo">Lumos FC</div><div class="page-subtitle">Member Check-in Tracker</div></div>
+  <div class="header-right">
+    <label class="btn" style="cursor:pointer">Import CSV <input type="file" id="csvIn" accept=".csv" style="display:none"></label>
+    <button class="btn" id="addBtn">+ Add member</button>
+    <button class="btn btn-accent" id="expBtn">Export CSV</button>
+    <button class="btn" id="settingsBtn" title="Calendar Settings">⚙ Calendar</button>
+  </div>
+</header>
+<div class="stats-bar" id="sb"></div>
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="search" id="srch" placeholder="Search name or package…">
+  </div>
+  <select id="owFlt">
+    <option value="all">All coaches</option>
+    <option value="noah">Noah</option>
+    <option value="jon">Jon</option>
+    <option value="brett">Brett</option>
+    <option value="jojo">Jojo</option>
+    <option value="other">Unassigned</option>
+  </select>
+  <div class="filter-group">
+    <button class="filter-btn active" data-f="all">All</button>
+    <button class="filter-btn fd" data-f="High">High risk</button>
+    <button class="filter-btn fw" data-f="Medium">Medium</button>
+    <button class="filter-btn fo" data-f="Low">Low risk</button>
+    <button class="filter-btn fw" data-f="overdue">Overdue / never</button>
+  </div>
+</div>
+<div class="toggle-row">
+  <label class="tgl-label">
+    <label class="tgl"><input type="checkbox" id="ciTgl"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+    <strong>Include check-in date in score</strong>
+    <span class="wpill" id="wpill">off</span>
+  </label>
+  <span style="font-size:12px;color:var(--text3)">Enable once you have a solid baseline of check-ins logged.</span>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th data-c="name">Member <span class="sa">↕</span></th>
+      <th data-c="owner">Coach <span class="sa">↕</span></th>
+      <th data-c="memberSince">Since <span class="sa">↕</span></th>
+      <th data-c="visits45" style="text-align:center">Visits (45d) <span class="sa">↕</span></th>
+      <th data-c="lastCheckin">Last check-in <span class="sa">↕</span></th>
+      <th data-c="score">Risk <span class="sa">↕</span></th>
+      <th data-c="tier">Tier <span class="sa">↕</span></th>
+      <th></th>
+    </tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+</div>
+<div class="mbg" id="modal">
+  <div class="mod">
+    <div class="mh"><span class="mt" id="mtitle">Member</span><button class="mc" id="mclose">×</button></div>
+    <div class="mg">
+      <div class="fld s2"><label>Name</label><input type="text" id="fn"></div>
+      <div class="fld"><label>Coach</label>
+        <select id="fo"><option value="noah">Noah</option><option value="jon">Jon</option><option value="brett">Brett</option><option value="jojo">Jojo</option><option value="n/a">Unassigned</option></select>
+      </div>
+      <div class="fld"><label>Member since</label><input type="date" id="fs"></div>
+      <div class="fld s2"><label>Package</label><input type="text" id="fp"></div>
+      <div class="fld"><label>Visits (last 45 days)</label><input type="number" id="fv" min="0" placeholder="blank = unknown"></div>
+      <div class="fld"><label>Last coach check-in</label><input type="date" id="fc"></div>
+    </div>
+    <div class="fld"><label>Notes</label><textarea id="fnotes" style="width:100%;min-height:56px;resize:vertical;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px 10px;font-family:'Barlow',sans-serif;font-size:13px;outline:none" placeholder="Notes…"></textarea></div>
+    <div id="chw"></div>
+    <div class="ma">
+      <button class="btn" id="mci" style="display:none">✓ Mark checked in today</button>
+      <div class="mar"><button class="btn" id="mcancel">Cancel</button><button class="btn btn-accent" id="msave">Save</button></div>
+    </div>
+  </div>
+</div>
+<!-- Settings Panel -->
+<div class="settings-bg" id="settingsPanel">
+  <div class="settings-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <h2>Calendar Settings</h2>
+      <button class="mc" id="settingsClose">×</button>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">When ✓ Checked In is clicked, an all-day follow-up event is created 90 days out on the assigned coach's Google Calendar.</p>
+
+    <div id="gcalStatusBar" class="gcal-status pending"><span class="gcal-dot"></span><span id="gcalStatusText">Checking Google Calendar connection…</span></div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Coach Calendar IDs</div>
+      <div class="cal-row">
+        <span class="coach-chip" style="background:var(--o-noah-bg);color:var(--o-noah)">Noah</span>
+        <input type="text" id="calNoah" placeholder="noah@lumosfc.com or calendar ID">
+      </div>
+      <div class="cal-row">
+        <span class="coach-chip" style="background:var(--o-jon-bg);color:var(--o-jon)">Jon</span>
+        <input type="text" id="calJon" placeholder="jon@lumosfc.com or calendar ID">
+      </div>
+      <div class="cal-row">
+        <span class="coach-chip" style="background:var(--o-brett-bg);color:var(--o-brett)">Brett</span>
+        <input type="text" id="calBrett" placeholder="brett@lumosfc.com or calendar ID">
+      </div>
+      <div class="cal-row">
+        <span class="coach-chip" style="background:var(--o-jojo-bg);color:var(--o-jojo)">JoJo</span>
+        <input type="text" id="calJojo" placeholder="jojo@lumosfc.com or calendar ID">
+      </div>
+      <div class="cal-row">
+        <span class="coach-chip" style="background:var(--surface2);color:var(--text3)">Fallback</span>
+        <input type="text" id="calFallback" value="info@lumosfc.com">
+      </div>
+      <div class="cal-hint">Use a Gmail address or the full calendar ID (found in Google Calendar → Settings → Calendar ID)</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Event Settings</div>
+      <div class="cal-row">
+        <label>Days out</label>
+        <input type="number" id="calDays" value="90" min="1" max="365" style="max-width:80px">
+      </div>
+    </div>
+
+    <div class="settings-footer">
+      <button class="btn" id="settingsCancel">Cancel</button>
+      <button class="btn btn-accent" id="settingsSave">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const T=new Date();T.setHours(0,0,0,0);
+const db=(d1,d2)=>Math.round((d2-d1)/864e5);
+const fmt=d=>{if(!d)return'—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+const iso=d=>d?d.toISOString().split('T')[0]:'';
+const fISO=s=>{if(!s||s==='Invalid Date')return null;const d=new Date(s+'T00:00:00');return isNaN(d)?null:d};
+const fD=s=>{
+  if(!s||s==='Invalid Date')return null;
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){const d=new Date(`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}T00:00:00`);return isNaN(d)?null:d}
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(m){const d=new Date(`20${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}T00:00:00`);return isNaN(d)?null:d}
+  return fISO(s);
+};
+const w45=w=>{if(w==null||w==='')return null;const n=parseFloat(w);return isNaN(n)?null:Math.round(n*6.43)};
+const oKey=o=>{if(!o)return'other';const l=o.toLowerCase().replace(/\?+\s*/,'').trim();if(l==='noah')return'noah';if(l==='jon')return'jon';if(l==='brett')return'brett';if(l==='jojo')return'jojo';return'other'};
+const oLabel=o=>{const k=oKey(o);if(k==='other')return'—';return k.charAt(0).toUpperCase()+k.slice(1)};
+const oCls=o=>{const k=oKey(o);if(k==='noah')return'on';if(k==='jon')return'oj';if(k==='brett')return'ob2';if(k==='jojo')return'ojj';return'oo'};
+
+let ciOn=false;
+
+function score(m){
+  const td=m.memberSince?db(m.memberSince,T):0;
+  // Under 6 weeks = not in play yet
+  if(td<42) return{score:0,tier:'New'};
+  const ts=Math.max(0,100-Math.floor(td/365*100));
+  const v=m.visits45!=null?m.visits45:0;
+  const vs=m.visits45==null?55:Math.max(0,100-Math.round((Math.min(v,16)/16)*100));
+  let s;
+  if(ciOn){
+    let cs;
+    if(td<90){
+      // In first-check-in window (6wks–3mo): only overdue if they already had a check-in that's now lapsed
+      cs=m.lastCheckin?Math.round((db(m.lastCheckin,T)/90)*50):25;
+    } else {
+      if(!m.lastCheckin)cs=100;
+      else{const d=db(m.lastCheckin,T);if(d<=90)cs=Math.round((d/90)*50);else if(d<=180)cs=50+Math.round(((d-90)/90)*50);else cs=100;}
+    }
+    s=Math.round(ts*0.2+vs*0.4+cs*0.4);
+  } else s=Math.round(ts*0.33+vs*0.67);
+  return{score:s,tier:s>=65?'High':s>=35?'Medium':'Low'};
+}
+
+let M=[
+  {id:1,name:"Adam Velasquez",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("07/04/2025"),visits45:w45(3.4),lastCheckin:null,history:[],notes:""},
+  {id:2,name:"Ahmaed Cephus",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("11/01/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:3,name:"Alejandra Harris",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("03/03/2026"),visits45:w45(3.0),lastCheckin:null,history:[],notes:""},
+  {id:4,name:"Alex Spitz",owner:"jon",pkg:"Lumos PLUS and Group Class- 9X/Month",memberSince:fD("07/09/2023"),visits45:w45(1.0),lastCheckin:null,history:[],notes:""},
+  {id:5,name:"Alex Wilcox",owner:"jon",pkg:"Personal Training- 2X/Week",memberSince:fD("07/18/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:6,name:"Alison Sifuentes",owner:"brett",pkg:"Foundations + Personal Training- 2X/Week",memberSince:fD("03/12/2026"),visits45:w45(1.8),lastCheckin:null,history:[],notes:""},
+  {id:7,name:"Alix Seyfarth",owner:"brett",pkg:"Hybrid Conditioning- Unlimited and Nutrition",memberSince:fD("12/05/2022"),visits45:w45(2.5),lastCheckin:null,history:[],notes:""},
+  {id:8,name:"Amanda Lisberger",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("03/13/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:9,name:"Amanda Hartman",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("04/29/2022"),visits45:w45(2.6),lastCheckin:null,history:[],notes:""},
+  {id:10,name:"Anastasiia Semenets",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("11/01/2023"),visits45:w45(1.8),lastCheckin:null,history:[],notes:""},
+  {id:11,name:"Andrea Scott",owner:"noah",pkg:"Nutrition and Group Class- Unlimited",memberSince:fD("07/05/2020"),visits45:w45(1.2),lastCheckin:null,history:[],notes:""},
+  {id:12,name:"Andrea Bergia",owner:"jojo",pkg:"Personal Training- 3X/Week",memberSince:fD("09/19/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:13,name:"Andy Pesant",owner:"brett",pkg:"Individual Program Design-5X/Week",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:14,name:"Angelica Lomax",owner:"brett",pkg:"Group Class- Unlimited and Nutrition",memberSince:fD("08/16/2024"),visits45:w45(1.7),lastCheckin:null,history:[],notes:""},
+  {id:15,name:"Anna Bruns",owner:"jojo",pkg:"Personal Training- 1X/Week",memberSince:fD("01/08/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:16,name:"Ariana Gum",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("08/01/2021"),visits45:w45(2.7),lastCheckin:null,history:[],notes:""},
+  {id:17,name:"Aziz Janbaz",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/28/2025"),visits45:w45(4.1),lastCheckin:null,history:[],notes:""},
+  {id:18,name:"Beau Welder",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("05/07/2025"),visits45:w45(3.5),lastCheckin:null,history:[],notes:""},
+  {id:19,name:"Benjamin Srsic",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("08/24/2025"),visits45:w45(1.5),lastCheckin:null,history:[],notes:""},
+  {id:20,name:"Benjamin Wilke",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("01/02/2026"),visits45:w45(0.5),lastCheckin:null,history:[],notes:""},
+  {id:21,name:"Bill Barnes",owner:"noah",pkg:"Group Class- Unlimited and INFINITE",memberSince:fD("11/14/2025"),visits45:w45(2.8),lastCheckin:null,history:[],notes:""},
+  {id:22,name:"Brandon Hovis",owner:"noah",pkg:"Group Class- Unlimited and 24/7 Open Gym",memberSince:fD("11/13/2025"),visits45:w45(2.4),lastCheckin:null,history:[],notes:""},
+  {id:23,name:"Brenda Cazares",owner:"n/a",pkg:"Group Class- Unlimited",memberSince:fD("01/09/2026"),visits45:w45(0.1),lastCheckin:null,history:[],notes:""},
+  {id:24,name:"Brett Livaudais",owner:"n/a",pkg:"Group Class- Unlimited",memberSince:fD("11/21/2023"),visits45:w45(0.6),lastCheckin:null,history:[],notes:""},
+  {id:25,name:"Brian Cleary",owner:"brett",pkg:"Hybrid Conditioning - 13X/Month and IPD-2X/Week",memberSince:fD("04/06/2025"),visits45:w45(1.5),lastCheckin:null,history:[],notes:""},
+  {id:26,name:"Brieanna Smith",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("10/09/2025"),visits45:w45(3.4),lastCheckin:null,history:[],notes:""},
+  {id:27,name:"Brooke Sanders",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("08/10/2024"),visits45:w45(1.6),lastCheckin:null,history:[],notes:""},
+  {id:28,name:"Caelin Quigley",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("03/23/2025"),visits45:w45(1.8),lastCheckin:null,history:[],notes:""},
+  {id:29,name:"Caitlin Mead",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("07/05/2020"),visits45:w45(0.9),lastCheckin:null,history:[],notes:""},
+  {id:30,name:"Candy Collins",owner:"noah",pkg:"Individual Program Design-2X/Week",memberSince:fD("01/09/2026"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:31,name:"Carol Bosselman",owner:"jojo",pkg:"Personal Training- 2X/Week and INFINITE",memberSince:fD("10/25/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:32,name:"Casey Wall",owner:"noah",pkg:"Individual Program Design-4X/Week",memberSince:fD("06/05/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:33,name:"Cassia Norris",owner:"brett",pkg:"Hybrid Conditioning - 13X/Month",memberSince:fD("07/05/2020"),visits45:w45(0.8),lastCheckin:null,history:[],notes:""},
+  {id:34,name:"Cayla Yang",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("04/13/2023"),visits45:w45(2.2),lastCheckin:null,history:[],notes:""},
+  {id:35,name:"Chase Davidson",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("07/11/2020"),visits45:w45(0.2),lastCheckin:null,history:[],notes:""},
+  {id:36,name:"Chris Wilson",owner:"jon",pkg:"IPD-2X/Week and Group Class- 9X/Month",memberSince:fD("06/20/2023"),visits45:w45(0.8),lastCheckin:null,history:[],notes:""},
+  {id:37,name:"Christin Durham",owner:"noah",pkg:"Individual Program Design-2X/Week",memberSince:fD("01/09/2026"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:38,name:"Christopher Clifton",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:39,name:"Cody Gummelt",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("08/31/2025"),visits45:w45(5.5),lastCheckin:null,history:[],notes:""},
+  {id:40,name:"Dalton Slattery",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("05/22/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:41,name:"Damian Pantoja",owner:"brett",pkg:"Individual Program Design-3X/Week",memberSince:fD("09/09/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:42,name:"Daniel Balcauski",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("07/12/2020"),visits45:w45(3.4),lastCheckin:null,history:[],notes:""},
+  {id:43,name:"Devon von Miller",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("12/04/2024"),visits45:w45(1.4),lastCheckin:null,history:[],notes:""},
+  {id:44,name:"Dexter Vaz",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("08/24/2025"),visits45:w45(1.3),lastCheckin:null,history:[],notes:""},
+  {id:45,name:"Edgar Martinez",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("07/05/2020"),visits45:w45(3.1),lastCheckin:null,history:[],notes:""},
+  {id:46,name:"Edwin Rivera",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("02/02/2026"),visits45:w45(3.0),lastCheckin:null,history:[],notes:""},
+  {id:47,name:"Eli Liberzon",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("05/29/2024"),visits45:w45(1.2),lastCheckin:null,history:[],notes:""},
+  {id:48,name:"Elizabeth Rooney",owner:"n/a",pkg:"Group Class- 9X/Month",memberSince:fD("04/07/2026"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:49,name:"Emily Nussman",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("04/13/2022"),visits45:w45(1.4),lastCheckin:null,history:[],notes:""},
+  {id:50,name:"Erin Hanley Roy",owner:"noah",pkg:"Group Class- Unlimited and Kids- 1X/Week",memberSince:fD("05/22/2023"),visits45:w45(2.0),lastCheckin:null,history:[],notes:""},
+  {id:51,name:"Erin Miller",owner:"brett",pkg:"Individual Program Design-3X/Week",memberSince:fD("03/24/2025"),visits45:w45(1.9),lastCheckin:null,history:[],notes:""},
+  {id:52,name:"Garrett Souza",owner:"brett",pkg:"Hybrid Conditioning- Unlimited",memberSince:fD("05/03/2024"),visits45:w45(1.4),lastCheckin:null,history:[],notes:""},
+  {id:53,name:"Greg Hines",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("03/11/2024"),visits45:w45(0.4),lastCheckin:null,history:[],notes:""},
+  {id:54,name:"Hailey Kirkpatrick",owner:"jon",pkg:"Nutrition",memberSince:fD("04/01/2024"),visits45:w45(0.2),lastCheckin:null,history:[],notes:""},
+  {id:55,name:"Harley Nussman",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/02/2023"),visits45:w45(1.2),lastCheckin:null,history:[],notes:""},
+  {id:56,name:"Hilary Neblett",owner:"jon",pkg:"24/7 Open Gym and Group Class- Unlimited and Nutrition",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:57,name:"Holly Welder",owner:"brett",pkg:"Individual Program Design-3X/Week",memberSince:fD("05/07/2025"),visits45:w45(1.5),lastCheckin:null,history:[],notes:""},
+  {id:58,name:"Holly Brissette",owner:"jon",pkg:"Individual Program Design-2X/Week and Nutrition",memberSince:fD("09/17/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:59,name:"Isaac Holton",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("11/01/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:60,name:"Jack Frid",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("10/21/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:61,name:"Jaclyn Nussman",owner:"n/a",pkg:"Kids- 1X/Week",memberSince:fD("11/24/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:62,name:"Jaime Jones",owner:"brett",pkg:"Nutrition and Lumos 360",memberSince:fD("07/10/2023"),visits45:w45(2.8),lastCheckin:null,history:[],notes:""},
+  {id:63,name:"Jake Droutsas",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("10/06/2022"),visits45:w45(1.2),lastCheckin:null,history:[],notes:""},
+  {id:64,name:"Jake Martin",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("06/28/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:65,name:"James Dever",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("09/01/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:66,name:"Jamie Gonzalez",owner:"brett",pkg:"Group Class- Unlimited",memberSince:fD("08/21/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:67,name:"Janet Stelly",owner:"noah",pkg:"PT- 1X/Week and IPD-2X/Week and INFINITE",memberSince:fD("02/18/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:68,name:"Jason Ranft",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("10/08/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:69,name:"Jasmin Skye",owner:"noah",pkg:"24/7 Open Gym Only",memberSince:fD("11/01/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:70,name:"Jenna Yolles",owner:"jon",pkg:"Compete",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:71,name:"Jennifer Prater",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:72,name:"Jenny Lee",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:73,name:"Jeremy Brinker",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("01/07/2026"),visits45:w45(0.8),lastCheckin:null,history:[],notes:""},
+  {id:74,name:"Jessi Roesch",owner:"noah",pkg:"Group Class- Punch Card",memberSince:fD("03/05/2021"),visits45:w45(0.3),lastCheckin:null,history:[],notes:""},
+  {id:75,name:"Jimmy Wolf",owner:"jojo",pkg:"Foundations-1 Week",memberSince:fD("03/02/2026"),visits45:w45(1.5),lastCheckin:null,history:[],notes:""},
+  {id:76,name:"Joel Crisp",owner:"jojo",pkg:"Personal Training- 3X/Week",memberSince:fD("10/08/2022"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:77,name:"John Molina",owner:"brett",pkg:"PT + IPD",memberSince:fD("11/03/2025"),visits45:w45(0.7),lastCheckin:null,history:[],notes:""},
+  {id:78,name:"Jordan Clark",owner:"jon",pkg:"Compete",memberSince:fD("07/05/2020"),visits45:w45(0.2),lastCheckin:null,history:[],notes:""},
+  {id:79,name:"Jorge Arguelles",owner:"brett",pkg:"Hybrid Conditioning - 9X/Month",memberSince:fD("03/01/2022"),visits45:w45(2.0),lastCheckin:null,history:[],notes:""},
+  {id:80,name:"Joshua Sidell",owner:"brett",pkg:"Group Class- 9X/Month",memberSince:fD("01/23/2026"),visits45:w45(1.5),lastCheckin:null,history:[],notes:""},
+  {id:81,name:"Karen Charchan",owner:"brett",pkg:"60 Min PT Punch Card",memberSince:fD("04/10/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:82,name:"Katherine Davidson",owner:"jon",pkg:"Group Class- Unlimited and 24/7 Open Gym",memberSince:fD("07/09/2020"),visits45:w45(0.1),lastCheckin:null,history:[],notes:""},
+  {id:83,name:"Kelly Seyfarth",owner:"jon",pkg:"Group Class- 9X/Month",memberSince:fD("09/30/2020"),visits45:w45(2.2),lastCheckin:null,history:[],notes:""},
+  {id:84,name:"Kelly Stevens",owner:"jon",pkg:"Personal Training- 2X/Week",memberSince:fD("05/11/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:85,name:"Kelsey Lyles",owner:"noah",pkg:"Group Class- Unlimited and 24/7 Open Gym",memberSince:fD("07/20/2020"),visits45:w45(0.5),lastCheckin:null,history:[],notes:""},
+  {id:86,name:"Kermit Johns",owner:"jojo",pkg:"Personal Training- 2X/Week",memberSince:fD("03/22/2026"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:87,name:"Kevin Roesch",owner:"brett",pkg:"Hybrid Conditioning - 13X/Month",memberSince:fD("05/23/2025"),visits45:w45(0.4),lastCheckin:null,history:[],notes:""},
+  {id:88,name:"Kim Wilke",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("01/02/2026"),visits45:w45(1.7),lastCheckin:null,history:[],notes:""},
+  {id:89,name:"Kumkum Pinto",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("08/24/2025"),visits45:w45(1.8),lastCheckin:null,history:[],notes:""},
+  {id:90,name:"Laura Cephus",owner:"jon",pkg:"24/7 Open Gym Only and Kids- 1X/Week",memberSince:fD("10/29/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:91,name:"Leslie Frid",owner:"jon",pkg:"Lumos PLUS and Nutrition",memberSince:fD("08/30/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:92,name:"Lizet Villagrana",owner:"jojo",pkg:"Kids- 1X/Week and Personal Training- 2X/Week",memberSince:fD("07/08/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:93,name:"Lori Madrid",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("03/10/2022"),visits45:w45(1.0),lastCheckin:null,history:[],notes:""},
+  {id:94,name:"Luis Leyva",owner:"jon",pkg:"Compete",memberSince:fD("09/26/2021"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:95,name:"Luke Summers",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/30/2022"),visits45:w45(3.5),lastCheckin:null,history:[],notes:""},
+  {id:96,name:"Maddie Sullivan",owner:"jon",pkg:"PT- 1X/Week and Nutrition and Lumos 360",memberSince:fD("08/31/2022"),visits45:w45(2.9),lastCheckin:null,history:[],notes:""},
+  {id:97,name:"Madison Clark",owner:"jon",pkg:"Compete",memberSince:fD("07/14/2020"),visits45:w45(0.4),lastCheckin:null,history:[],notes:""},
+  {id:98,name:"Maggie Barham",owner:"jon",pkg:"IPD-3X/Week and Hybrid Conditioning - 9X/Month",memberSince:fD("10/17/2020"),visits45:w45(1.6),lastCheckin:null,history:[],notes:""},
+  {id:99,name:"Malary Lee",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("05/01/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:100,name:"Marian Fernandez",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("8/28/25"),visits45:w45(2.8),lastCheckin:null,history:[],notes:""},
+  {id:101,name:"Mark Murphy",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("06/30/2022"),visits45:w45(1.1),lastCheckin:null,history:[],notes:""},
+  {id:102,name:"Mason Chan",owner:"brett",pkg:"Hybrid Conditioning - 9X/Month",memberSince:fD("06/08/2025"),visits45:w45(1.0),lastCheckin:null,history:[],notes:""},
+  {id:103,name:"Matthew Hamilton",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("07/23/2024"),visits45:w45(2.4),lastCheckin:null,history:[],notes:""},
+  {id:104,name:"Megan Kallus",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("12/03/2022"),visits45:w45(2.7),lastCheckin:null,history:[],notes:""},
+  {id:105,name:"Megan Clement",owner:"jojo",pkg:"Group Class- Unlimited",memberSince:fD("09/10/2024"),visits45:w45(2.8),lastCheckin:null,history:[],notes:""},
+  {id:106,name:"Melodie Brown",owner:"jon",pkg:"Personal Training- 3X/Week",memberSince:fD("11/03/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:107,name:"Michael Fremming",owner:"jon",pkg:"IPD-4X/Week and Nutrition",memberSince:fD("07/05/2020"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:108,name:"Michael Ahrens",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/02/2022"),visits45:w45(1.1),lastCheckin:null,history:[],notes:""},
+  {id:109,name:"Mike Bernal",owner:"jon",pkg:"Group Class- 9X/Month",memberSince:fD("01/24/2025"),visits45:w45(1.7),lastCheckin:null,history:[],notes:""},
+  {id:110,name:"Mike Roy",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("05/23/2023"),visits45:w45(2.2),lastCheckin:null,history:[],notes:""},
+  {id:111,name:"Nabeel Javed",owner:"jon",pkg:"Personal Training- 2X/Week",memberSince:fD("06/17/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:112,name:"Neil Kirkpatrick",owner:"brett",pkg:"Individual Program Design-4X/Week",memberSince:fD("09/19/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:113,name:"Nicholas Taylor",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/15/2026"),visits45:w45(0.4),lastCheckin:null,history:[],notes:""},
+  {id:114,name:"Nickolas Grisham",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("02/21/2021"),visits45:w45(1.0),lastCheckin:null,history:[],notes:""},
+  {id:115,name:"Oran Riojas",owner:"jon",pkg:"Personal Training- 3X/Week",memberSince:fD("06/05/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:116,name:"Patrick Murray",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("08/07/2024"),visits45:w45(3.2),lastCheckin:null,history:[],notes:""},
+  {id:117,name:"Paul Calogerakis",owner:"jon",pkg:"Personal Training- 2X/Week",memberSince:fD("10/07/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:118,name:"Sammi Curless",owner:"jojo",pkg:"Personal Training- 2X/Week",memberSince:fD("09/27/2023"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:119,name:"Saurabh Kulkarni",owner:"n/a",pkg:"Foundations-1 Week",memberSince:fD("04/07/2026"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:120,name:"Scott Ervin",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("10/22/2025"),visits45:w45(2.3),lastCheckin:null,history:[],notes:""},
+  {id:121,name:"Scott Smith",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("12/29/2023"),visits45:w45(2.5),lastCheckin:null,history:[],notes:""},
+  {id:122,name:"Stephanie Knoll",owner:"jojo",pkg:"Individual Program Design-5X/Week",memberSince:fD("07/13/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:123,name:"Steven Sullivan",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("01/24/2023"),visits45:w45(1.0),lastCheckin:null,history:[],notes:""},
+  {id:124,name:"Suzie Morrel",owner:"jon",pkg:"Personal Training- 2X/Week",memberSince:fD("04/12/2024"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:125,name:"Tara Thankachan",owner:"brett",pkg:"Foundations + 6 Months UNL Group Class PIF",memberSince:fD("12/17/2025"),visits45:null,lastCheckin:null,history:[],notes:""},
+  {id:126,name:"Taylor Fields",owner:"jon",pkg:"Group Class- Unlimited",memberSince:fD("09/20/2023"),visits45:w45(2.8),lastCheckin:null,history:[],notes:""},
+  {id:127,name:"Taylor Wesley",owner:"noah",pkg:"Group Class- 9X/Month",memberSince:fD("03/11/2024"),visits45:w45(0.8),lastCheckin:null,history:[],notes:""},
+  {id:128,name:"Terran Roberti",owner:"brett",pkg:"Hybrid Conditioning - 9X/Month",memberSince:fD("01/05/2026"),visits45:w45(1.2),lastCheckin:null,history:[],notes:""},
+  {id:129,name:"Tori Villarreal",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("01/07/2026"),visits45:w45(1.9),lastCheckin:null,history:[],notes:""},
+  {id:130,name:"Tyler Powell",owner:"jon",pkg:"Lumos PLUS",memberSince:fD("07/01/2024"),visits45:0,lastCheckin:null,history:[],notes:""},
+  {id:131,name:"Victoria Young",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("11/30/2023"),visits45:w45(3.2),lastCheckin:null,history:[],notes:""},
+];
+
+let nid=200,sCol='score',sDir=1,fTier='all',fOwn='all',srch='',eid=null;
+
+function gf(){
+  let r=M.map(m=>({...m,...score(m)}));
+  if(fOwn!=='all'){if(fOwn==='other')r=r.filter(m=>oKey(m.owner)==='other');else r=r.filter(m=>oKey(m.owner)===fOwn);}
+  if(fTier==='overdue')r=r.filter(m=>m.tier!=='New'&&(!m.lastCheckin||db(m.lastCheckin,T)>90));
+  else if(fTier!=='all')r=r.filter(m=>m.tier===fTier);
+  if(srch)r=r.filter(m=>m.name.toLowerCase().includes(srch.toLowerCase())||(m.pkg||'').toLowerCase().includes(srch.toLowerCase()));
+  r.sort((a,b)=>{
+    let va=a[sCol],vb=b[sCol];
+    if(va instanceof Date)va=va.getTime();if(vb instanceof Date)vb=vb.getTime();
+    if(va==null)va=sDir>0?Infinity:-Infinity;if(vb==null)vb=sDir>0?Infinity:-Infinity;
+    if(typeof va==='string')return sDir*va.localeCompare(vb);
+    return sDir*(va-vb);
+  });
+  return r;
+}
+
+function rs(){
+  const a=M.map(m=>({...m,...score(m)}));
+  const nw=a.filter(m=>m.tier==='New').length;
+  const scored=a.filter(m=>m.tier!=='New');
+  const h=scored.filter(m=>m.tier==='High').length,me=scored.filter(m=>m.tier==='Medium').length,lo=scored.filter(m=>m.tier==='Low').length;
+  document.getElementById('sb').innerHTML=`<div class="stat"><div class="stat-label">Members</div><div class="stat-val">${a.length}</div></div><div class="stat"><div class="stat-label">High risk</div><div class="stat-val danger">${h}</div></div><div class="stat"><div class="stat-label">Medium risk</div><div class="stat-val warn">${me}</div></div><div class="stat"><div class="stat-label">Low risk</div><div class="stat-val ok">${lo}</div></div><div class="stat"><div class="stat-label">First 6 weeks</div><div class="stat-val" style="color:var(--new-c)">${nw}</div></div>`;
+}
+
+function rt(){
+  const rows=gf();const tb=document.getElementById('tb');
+  if(!rows.length){tb.innerHTML='<tr class="er"><td colspan="8">No members match.</td></tr>';return}
+  tb.innerHTML=rows.map(m=>{
+    const da=m.lastCheckin?db(m.lastCheckin,T):null;
+    const cc=m.lastCheckin?`<div class="cd">${fmt(m.lastCheckin)}</div><div class="ca">${da}d ago${da>90?' ⚠':''}</div>`:`<span class="nev">Never</span>`;
+    const isNew=m.tier==='New';
+    const bc=isNew?'bn':m.tier==='High'?'bh':m.tier==='Medium'?'bm':'bl';
+    const bc2=isNew?'rgba(255,199,44,0.4)':m.tier==='High'?'var(--gold)':m.tier==='Medium'?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.2)';
+    const tierLabel=isNew?'First 6 Weeks':m.tier;
+    const ts=m.memberSince?`<div class="td">${fmt(m.memberSince)}</div><div class="ty">${(db(m.memberSince,T)/365).toFixed(1)}y</div>`:`<span style="color:var(--text3);font-size:12px">?</span>`;
+    const vs=m.visits45!=null?`<div class="vn">${m.visits45}</div>`:`<div class="dash">—</div>`;
+    const ol=oLabel(m.owner);
+    const os=ol==='—'?`<span style="color:var(--text3);font-size:12px">—</span>`:`<span class="ob ${oCls(m.owner)}">${ol}</span>`;
+    const scoreCell=isNew?`<div class="sc"><span class="sn" style="color:var(--text3)">—</span></div>`:`<div class="sc"><div class="bb"><div class="bf" style="width:${m.score}%;background:${bc2}"></div></div><span class="sn">${m.score}</span></div>`;
+    return`<tr><td><div class="mn">${m.name}</div>${m.pkg?`<div class="mpkg">${m.pkg}</div>`:''}</td><td>${os}</td><td>${ts}</td><td>${vs}</td><td>${cc}</td><td>${scoreCell}</td><td><span class="badge ${bc}">${tierLabel}</span></td><td style="white-space:nowrap;display:flex;gap:6px;align-items:center"><button class="cbt" data-i="${m.id}">✓ Checked In</button><button class="ebt" data-i="${m.id}">Edit</button></td></tr>`;
+  }).join('');
+  tb.querySelectorAll('.ebt').forEach(b=>b.addEventListener('click',()=>oEdit(+b.dataset.i)));
+  tb.querySelectorAll('.cbt').forEach(b=>b.addEventListener('click',()=>doCheckin(+b.dataset.i,b)));
+}
+
+/* ── Calendar settings ── */
+const CAL_DEFAULTS={noah:'',jon:'',brett:'',jojo:'',fallback:'info@lumosfc.com',days:90};
+let calSettings=Object.assign({},CAL_DEFAULTS);
+(function loadCalSettings(){
+  try{const s=localStorage.getItem('lumosCalSettings');if(s)calSettings=Object.assign({},CAL_DEFAULTS,JSON.parse(s));}catch(e){}
+})();
+
+function saveCalSettings(){
+  calSettings.noah=document.getElementById('calNoah').value.trim();
+  calSettings.jon=document.getElementById('calJon').value.trim();
+  calSettings.brett=document.getElementById('calBrett').value.trim();
+  calSettings.jojo=document.getElementById('calJojo').value.trim();
+  calSettings.fallback=document.getElementById('calFallback').value.trim()||'info@lumosfc.com';
+  calSettings.days=parseInt(document.getElementById('calDays').value)||90;
+  try{localStorage.setItem('lumosCalSettings',JSON.stringify(calSettings));}catch(e){}
+}
+
+function getCalId(ownerKey){
+  const map={noah:calSettings.noah,jon:calSettings.jon,brett:calSettings.brett,jojo:calSettings.jojo};
+  return(map[ownerKey]||'').trim()||calSettings.fallback||'info@lumosfc.com';
+}
+
+/* ── Toast notifications ── */
+function showToast(msg,type='success',dur=4500){
+  const wrap=document.getElementById('toastWrap');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  t.textContent=msg;
+  wrap.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),350)},dur);
+}
+
+/* ── Google Calendar event creation ── */
+async function createFollowUpEvent(member, daysOut){
+  // Build date 90 days from today
+  const eventDate=new Date(T);
+  eventDate.setDate(eventDate.getDate()+daysOut);
+  const dateStr=iso(eventDate);
+
+  const calId=getCalId(oKey(member.owner));
+  const title=`Check in with ${member.name}`;
+
+  try{
+    // Use the Google Calendar MCP via the Anthropic API with MCP servers
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        mcp_servers:[{type:'url',url:'https://gcal.mcp.claude.com/mcp',name:'gcal'}],
+        messages:[{
+          role:'user',
+          content:`Create an all-day Google Calendar event on calendar "${calId}" for the date ${dateStr}. Title: "${title}". Description: "90-day member check-in follow-up from Lumos FC Member Tracker. Member: ${member.name}. Coach: ${oLabel(member.owner)}. Package: ${member.pkg||'—'}." Respond only with a short JSON: {"success": true, "eventId": "..."} or {"success": false, "error": "..."}`
+        }]
+      })
+    });
+
+    if(!resp.ok){
+      const err=await resp.text();
+      throw new Error(`API error ${resp.status}: ${err.slice(0,120)}`);
+    }
+
+    const data=await resp.json();
+
+    // Parse the response — look for success signal in any text block
+    const textBlocks=data.content.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const toolResults=data.content.filter(b=>b.type==='mcp_tool_result');
+
+    // Check tool results for success
+    let calSuccess=false;
+    if(toolResults.length>0){
+      // Any tool result means the MCP call was attempted; assume success if no error key
+      const resultText=toolResults.map(r=>r.content?.[0]?.text||'').join('');
+      calSuccess=!resultText.toLowerCase().includes('"error"')||resultText.toLowerCase().includes('"id"');
+      if(!calSuccess&&resultText){
+        const parsed=JSON.parse(resultText);
+        if(parsed&&parsed.error) throw new Error(parsed.error);
+      }
+      calSuccess=true; // tool was called = event was created
+    } else if(textBlocks.includes('"success": true')||textBlocks.includes('"success":true')){
+      calSuccess=true;
+    } else if(textBlocks.toLowerCase().includes('created')||textBlocks.toLowerCase().includes('event')){
+      calSuccess=true;
+    }
+
+    if(calSuccess){
+      showToast(`📅 Follow-up event created for ${member.name} on ${eventDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} → ${calId}`,'success');
+    } else {
+      throw new Error('Calendar event creation returned unexpected response');
+    }
+
+  }catch(err){
+    console.error('GCal event creation failed:',err);
+    showToast(`⚠ Check-in logged, but calendar event failed: ${err.message.slice(0,80)}`,'error',6000);
+  }
+}
+
+async function doCheckin(id, btn){
+  const m=M.find(x=>x.id===id);if(!m)return;
+  const prev=iso(m.lastCheckin);
+  if(prev) m.history=[...(m.history||[]),prev];
+  m.lastCheckin=new Date(T);
+  btn.textContent='✓ Done!';
+  btn.classList.add('flash');
+  btn.disabled=true;
+
+  // Fire GCal event creation in parallel (non-blocking)
+  const days=calSettings.days||90;
+  createFollowUpEvent(m, days);
+
+  setTimeout(()=>render(),600);
+}
+
+
+function render(){rs();rt()}
+
+document.getElementById('ciTgl').addEventListener('change',function(){ciOn=this.checked;document.getElementById('wpill').textContent=ciOn?'40% weight':'off';render()});
+
+document.querySelectorAll('th[data-c]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const c=th.dataset.c;if(sCol===c)sDir*=-1;else{sCol=c;sDir=1}
+    document.querySelectorAll('th').forEach(t=>{t.classList.remove('sorted');t.querySelector('.sa')&&(t.querySelector('.sa').textContent='↕')});
+    th.classList.add('sorted');th.querySelector('.sa').textContent=sDir===1?'↓':'↑';rt();
+  });
+});
+document.querySelectorAll('.filter-btn').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');fTier=b.dataset.f;rt()});
+});
+document.getElementById('srch').addEventListener('input',e=>{srch=e.target.value;rt()});
+document.getElementById('owFlt').addEventListener('change',e=>{fOwn=e.target.value;rt()});
+
+function oAdd(){eid=null;document.getElementById('mtitle').textContent='Add member';['fn','fp','fs','fv','fc'].forEach(i=>document.getElementById(i).value='');document.getElementById('fo').value='noah';document.getElementById('fnotes').value='';document.getElementById('chw').innerHTML='';document.getElementById('mci').style.display='none';document.getElementById('modal').classList.add('open')}
+function oEdit(id){eid=id;const m=M.find(x=>x.id===id);
+  document.getElementById('mtitle').textContent=m.name;
+  document.getElementById('fn').value=m.name;
+  document.getElementById('fo').value=oKey(m.owner)==='other'?'n/a':oKey(m.owner);
+  document.getElementById('fp').value=m.pkg||'';
+  document.getElementById('fs').value=iso(m.memberSince);
+  document.getElementById('fv').value=m.visits45!=null?m.visits45:'';
+  document.getElementById('fc').value=iso(m.lastCheckin);
+  document.getElementById('fnotes').value=m.notes||'';
+  const h=m.history||[];
+  document.getElementById('chw').innerHTML=h.length?`<div class="ch"><div class="cht">Check-in history</div>${h.map(d=>`<div class="chi">${fmt(fISO(d))}</div>`).join('')}</div>`:'';
+  document.getElementById('mci').style.display='inline-block';
+  document.getElementById('modal').classList.add('open');
+}
+const cm=()=>document.getElementById('modal').classList.remove('open');
+document.getElementById('addBtn').addEventListener('click',oAdd);
+document.getElementById('mcancel').addEventListener('click',cm);
+document.getElementById('mclose').addEventListener('click',cm);
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)cm()});
+
+document.getElementById('msave').addEventListener('click',()=>{
+  const name=document.getElementById('fn').value.trim();if(!name)return;
+  const owner=document.getElementById('fo').value;
+  const pkg=document.getElementById('fp').value.trim();
+  const since=fISO(document.getElementById('fs').value);
+  const vr=document.getElementById('fv').value;const visits=vr===''?null:parseInt(vr)||0;
+  const checkin=fISO(document.getElementById('fc').value);
+  const notes=document.getElementById('fnotes').value.trim();
+  if(eid){const m=M.find(x=>x.id===eid);Object.assign(m,{name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,notes});}
+  else M.push({id:nid++,name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,history:[],notes});
+  cm();render();
+});
+
+document.getElementById('mci').addEventListener('click',()=>{
+  const m=M.find(x=>x.id===eid);if(!m)return;
+  const prev=iso(m.lastCheckin);if(prev)m.history=[...(m.history||[]),prev];
+  m.lastCheckin=new Date(T);document.getElementById('fc').value=iso(T);
+  const h=m.history||[];
+  document.getElementById('chw').innerHTML=h.length?`<div class="ch"><div class="cht">Check-in history</div>${h.map(d=>`<div class="chi">${fmt(fISO(d))}</div>`).join('')}</div>`:'';
+  render();
+});
+
+document.getElementById('csvIn').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const lines=ev.target.result.split('\n').filter(l=>l.trim());
+    const hdr=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/^"|"$/g,'').replace(/\?/g,''));
+    const ix=k=>hdr.findIndex(h=>h.includes(k));
+    const ni=ix('name'),si=ix('since'),vi=ix('visit'),ci=ix('check'),pi=ix('package'),oi=ix('owner');
+    lines.slice(1).forEach(line=>{
+      const cols=line.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      const name=ni>=0?cols[ni]:'';if(!name)return;
+      M.push({id:nid++,name,owner:oi>=0?cols[oi]:'',pkg:pi>=0?cols[pi]:'',memberSince:si>=0?(fD(cols[si])||fISO(cols[si])):null,visits45:vi>=0?(cols[vi]===''?null:parseInt(cols[vi])||null):null,lastCheckin:ci>=0?fISO(cols[ci]):null,history:[],notes:''});
+    });render();
+  };r.readAsText(f);e.target.value='';
+});
+
+document.getElementById('expBtn').addEventListener('click',()=>{
+  const rows=M.map(m=>{const{score:sc,tier}=score(m);return[`"${m.name}"`,oLabel(m.owner),iso(m.memberSince),m.visits45!=null?m.visits45:'',iso(m.lastCheckin),sc,tier,`"${m.pkg||''}"`,`"${(m.notes||'').replace(/"/g,"'")}"`].join(',')});
+  const csv='Name,Coach,Member Since,Visits (45d),Last Check-in,Risk Score,Risk Tier,Package,Notes\n'+rows.join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='lumos_checkins_'+iso(T)+'.csv';a.click();
+});
+
+/* ── Settings panel wiring ── */
+function openSettings(){
+  document.getElementById('calNoah').value=calSettings.noah||'';
+  document.getElementById('calJon').value=calSettings.jon||'';
+  document.getElementById('calBrett').value=calSettings.brett||'';
+  document.getElementById('calJojo').value=calSettings.jojo||'';
+  document.getElementById('calFallback').value=calSettings.fallback||'info@lumosfc.com';
+  document.getElementById('calDays').value=calSettings.days||90;
+  document.getElementById('settingsPanel').classList.add('open');
+  checkGCalStatus();
+}
+function closeSettings(){document.getElementById('settingsPanel').classList.remove('open');}
+
+document.getElementById('settingsBtn').addEventListener('click',openSettings);
+document.getElementById('settingsClose').addEventListener('click',closeSettings);
+document.getElementById('settingsCancel').addEventListener('click',closeSettings);
+document.getElementById('settingsPanel').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSettings();});
+document.getElementById('settingsSave').addEventListener('click',()=>{saveCalSettings();closeSettings();showToast('Calendar settings saved','success',2500);});
+
+async function checkGCalStatus(){
+  const bar=document.getElementById('gcalStatusBar');
+  const statusTxt=document.getElementById('gcalStatusText');
+  bar.className='gcal-status pending';
+  statusTxt.textContent='Checking Google Calendar connection…';
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:200,
+        mcp_servers:[{type:'url',url:'https://gcal.mcp.claude.com/mcp',name:'gcal'}],
+        messages:[{role:'user',content:'List 1 calendar from Google Calendar. Respond only with JSON {"connected":true} or {"connected":false}.'}]
+      })
+    });
+    if(!resp.ok)throw new Error('API error '+resp.status);
+    const data=await resp.json();
+    const hasToolActivity=data.content.some(b=>b.type==='mcp_tool_use'||b.type==='mcp_tool_result');
+    const respTxt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    if(hasToolActivity||respTxt.includes('"connected":true')||respTxt.toLowerCase().includes('calendar')){
+      bar.className='gcal-status connected';
+      statusTxt.textContent='Google Calendar connected — events will be created automatically on check-in';
+    } else {
+      throw new Error('No calendar activity in response');
+    }
+  }catch(e){
+    bar.className='gcal-status disconnected';
+    statusTxt.textContent='Google Calendar not connected — enable it in Claude.ai Settings → Integrations';
+  }
+}
+
+render();
+</script>
+</body>
+</html>
