@@ -615,7 +615,9 @@ function mFromSheet(row){
     if(!v||v==='')return null;
     if(v instanceof Date)return isNaN(v)?null:v;
     const s=String(v).trim();
-    // ISO format: 2025-07-04
+    // Full ISO timestamp: 2025-07-04T05:00:00.000Z — extract date part only
+    if(/^\d{4}-\d{2}-\d{2}T/.test(s)){const d=new Date(s.substring(0,10)+'T00:00:00');return isNaN(d)?null:d;}
+    // ISO date: 2025-07-04
     if(/^\d{4}-\d{2}-\d{2}/.test(s)){const d=new Date(s+'T00:00:00');return isNaN(d)?null:d;}
     // US format: 07/04/2025
     return fD(s)||fISO(s);
