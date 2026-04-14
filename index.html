@@ -587,6 +587,105 @@ let M=[
   {id:131,name:"Victoria Young",owner:"noah",pkg:"Group Class- Unlimited",memberSince:fD("11/30/2023"),visits45:w45(3.2),lastCheckin:null,history:[],notes:""},
 ];
 
+/* ── Google Sheets sync ── */
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbyCzRsN8ywjpQEIqtKcOgwbhEexqm0aKYcvoQmn7W1tuVYYliLA78B97ZYD6xn7lWYk4A/exec';
+let sheetsLoaded=false;
+
+function mToSheet(m){
+  const{score:sc,tier}=score(m);
+  return{
+    id:m.id,
+    name:m.name,
+    owner:m.owner||'',
+    pkg:m.pkg||'',
+    memberSince:iso(m.memberSince),
+    visits45:m.visits45!=null?m.visits45:'',
+    lastCheckin:iso(m.lastCheckin),
+    history:JSON.stringify(m.history||[]),
+    notes:m.notes||'',
+    ytd:m.ytd||'',
+    score:sc,
+    tier
+  };
+}
+
+function mFromSheet(row){
+  return{
+    id:parseInt(row.id)||row.id,
+    name:row.name||'',
+    owner:row.owner||'',
+    pkg:row.pkg||'',
+    memberSince:fISO(row.memberSince)||fD(row.memberSince),
+    visits45:row.visits45!==''&&row.visits45!=null?parseInt(row.visits45):null,
+    lastCheckin:fISO(row.lastCheckin),
+    history:Array.isArray(row.history)?row.history:(()=>{try{return JSON.parse(row.history||'[]')}catch(e){return[]}})(),
+    notes:row.notes||'',
+    ytd:row.ytd!==''&&row.ytd!=null?parseInt(row.ytd):null
+  };
+}
+
+async function sheetsGet(){
+  try{
+    const resp=await fetch(SHEETS_URL+'?action=getAll');
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+    if(data.members&&data.members.length){
+      M=data.members.map(mFromSheet);
+      nid=Math.max(200,...M.map(m=>parseInt(m.id)||0))+1;
+      sheetsLoaded=true;
+      return true;
+    }
+    // Sheet is empty — push local data up
+    await sheetsSaveAll();
+    sheetsLoaded=true;
+    return true;
+  }catch(e){
+    console.warn('Sheets load failed, using local data:',e);
+    return false;
+  }
+}
+
+async function sheetsSaveAll(){
+  try{
+    await fetch(SHEETS_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'saveAll',members:M.map(mToSheet)})
+    });
+  }catch(e){console.warn('Sheets saveAll failed:',e);}
+}
+
+async function sheetsUpdate(member){
+  try{
+    await fetch(SHEETS_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'updateMember',member:mToSheet(member)})
+    });
+  }catch(e){console.warn('Sheets update failed:',e);}
+}
+
+async function sheetsDelete(id){
+  try{
+    await fetch(SHEETS_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'deleteMember',id})
+    });
+  }catch(e){console.warn('Sheets delete failed:',e);}
+}
+
+function showSyncStatus(msg,ok=true){
+  const existing=document.getElementById('syncStatus');
+  if(existing)existing.remove();
+  const el=document.createElement('div');
+  el.id='syncStatus';
+  el.style.cssText=`position:fixed;bottom:24px;left:24px;z-index:200;font-size:11px;font-weight:600;
+    padding:6px 12px;border-radius:4px;background:${ok?'var(--low-dim)':'var(--high-dim)'};
+    color:${ok?'var(--low)':'var(--high)'};border:1px solid ${ok?'rgba(26,122,74,0.2)':'rgba(217,48,37,0.2)'};
+    font-family:'DM Mono',monospace;pointer-events:none;opacity:1;transition:opacity .5s`;
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),500)},3000);
+}
+
 let nid=200,sCol='score',sDir=1,fTier='all',fOwn='all',srch='',eid=null;
 
 function gf(){
@@ -772,6 +871,7 @@ async function doCheckin(id,btn){
   btn.textContent='✓ Done!';
   btn.classList.add('flash');
   btn.disabled=true;
+  sheetsUpdate(m).then(()=>showSyncStatus('✓ Synced to Sheet'));
   createFollowUpEvent(m,calSettings.days||90);
   setTimeout(()=>render(),600);
 }
@@ -817,6 +917,7 @@ document.getElementById('mdel').addEventListener('click',()=>{
   const m=M.find(x=>x.id===eid);if(!m)return;
   if(!confirm(`Remove ${m.name} from the tracker? This cannot be undone.`))return;
   M=M.filter(x=>x.id!==eid);
+  sheetsDelete(eid).then(()=>showSyncStatus('✓ Synced to Sheet'));
   cm();render();
 });
 document.getElementById('mclose').addEventListener('click',cm);
@@ -830,8 +931,10 @@ document.getElementById('msave').addEventListener('click',()=>{
   const vr=document.getElementById('fv').value;const visits=vr===''?null:parseInt(vr)||0;
   const checkin=fISO(document.getElementById('fc').value);
   const notes=document.getElementById('fnotes').value.trim();
-  if(eid){const m=M.find(x=>x.id===eid);Object.assign(m,{name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,notes});}
-  else M.push({id:nid++,name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,history:[],notes});
+  let member;
+  if(eid){member=M.find(x=>x.id===eid);Object.assign(member,{name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,notes});}
+  else{member={id:nid++,name,owner,pkg,memberSince:since,visits45:visits,lastCheckin:checkin,history:[],notes};M.push(member);}
+  sheetsUpdate(member).then(()=>showSyncStatus('✓ Synced to Sheet'));
   cm();render();
 });
 
@@ -841,6 +944,7 @@ document.getElementById('mci').addEventListener('click',()=>{
   m.lastCheckin=new Date(T);document.getElementById('fc').value=iso(T);
   const h=m.history||[];
   document.getElementById('chw').innerHTML=h.length?`<div class="ch"><div class="cht">Check-in history</div>${h.map(d=>`<div class="chi">${fmt(fISO(d))}</div>`).join('')}</div>`:'';
+  sheetsUpdate(m).then(()=>showSyncStatus('✓ Synced to Sheet'));
   render();
 });
 
@@ -1135,7 +1239,7 @@ document.getElementById('imp3Commit').addEventListener('click',()=>{
 
   closeImport();
   render();
-
+  sheetsSaveAll().then(()=>showSyncStatus('✓ Import synced to Sheet'));
   const summary=`Import complete — ${newMembers.length} added, ${visitsUpdated.length} visits updated, ${toDelete.size} removed`;
   showToast(summary,'success',6000);
 });
@@ -1161,7 +1265,17 @@ initGoogleAuth().then(()=>{
   if(isGCalAuthed()) updateGCalStatus(true);
 });
 
-render();
+/* ── Initial load — try Sheets first, fall back to hardcoded data ── */
+(async()=>{
+  showSyncStatus('Loading from Google Sheets…',true);
+  const loaded=await sheetsGet();
+  if(loaded){
+    showSyncStatus('✓ Loaded from Google Sheets',true);
+  } else {
+    showSyncStatus('⚠ Using local data — Sheets unavailable',false);
+  }
+  render();
+})();
 </script>
 </body>
 </html>
