@@ -489,7 +489,6 @@ function rt(){
     const bc2=isNew?'rgba(255,199,44,0.4)':m.tier==='High'?'var(--gold)':m.tier==='Medium'?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.2)';
     const tierLabel=isNew?'First 6 Weeks':m.tier;
     const ts=m.memberSince?`<div class="td">${fmt(m.memberSince)}</div><div class="ty">${(db(m.memberSince,T)/365).toFixed(1)}y</div>`:`<span style="color:var(--text3);font-size:12px">?</span>`;
-    const vs=m.visits45!=null?`<div class="vn">${m.visits45}</div>`:`<div class="dash">—</div>`;
     const ol=oLabel(m.owner);
     const os=ol==='—'?`<span style="color:var(--text3);font-size:12px">—</span>`:`<span class="ob ${oCls(m.owner)}">${ol}</span>`;
     const scoreCell=isNew?`<div class="sc"><span class="sn" style="color:var(--text3)">—</span></div>`:`<div class="sc"><div class="bb"><div class="bf" style="width:${m.score}%;background:${bc2}"></div></div><span class="sn">${m.score}</span></div>`;
